@@ -2,46 +2,16 @@ from Tkinter import *
 import time
 import random
 
-class App:
-	def __init__(self, master):
-
-		frame = Frame(master)
-		frame.pack()
-
-		self.canvas = Canvas(master, width=gridSize * tileSize, height=gridSize * tileSize)
-		self.canvas.pack()
-
-		self.seedEntry = Entry(master)
-		self.seedEntry.pack()
-
-		self.seedEntry.insert(0, random.randint(100000, 999999))
-		self.seedEntry.focus_set()
-
-		gridUpdateButton = Button(master, text="Update Grid", command=self.gridUpdate)
-		gridUpdateButton.pack()
-
-		self.grid = Grid(gridSize, tileSize)
-		self.gridUpdate()
-
-	#update grid colors with new seed
-	def gridUpdate(self):
-		reseed(self.seedEntry.get())
-		for tile in self.grid.playgrid:
-			self.canvas.create_rectangle(tile.centerX - self.grid.tileSize / 2,
-							   tile.centerY - self.grid.tileSize / 2,
-							   tile.centerX + self.grid.tileSize / 2, 
-							   tile.centerY + self.grid.tileSize / 2,
-							   fill=random.choice(colors))
-			self.canvas.pack()
-
 #square tile
 #size is the w or h
 class Tile:
-	def __init__(self, size, centerX, centerY):
+	def __init__(self, size, centerX, centerY, tileNum, color):
 		self.size = size
+		#pixel positions
 		self.centerX = centerX
 		self.centerY = centerY
-		#self.color = random.choice(colors)
+		self.tileNum = tileNum
+		self.color = color
 
 #a gridSize x gridSize grid of Tiles
 class Grid:
@@ -50,28 +20,62 @@ class Grid:
 		self.tileSize = tileSize
 		self.playgrid = []
 
+		#create tiles
 		for i in range(gridSize * gridSize):
-			centerX = (i * tileSize - (tileSize / 2)) % (gridSize * tileSize)
+			#i * tileSize gets you to the left side, adding half of tilesize gets you to the center, modulus keeps it in rows
+			centerX = (i * tileSize + (tileSize / 2)) % (gridSize * tileSize)
+			#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
 			centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
-			self.playgrid.append(Tile(tileSize, centerX, centerY))
+			color = random.choice(colors)
+			self.playgrid.append(Tile(tileSize, centerX, centerY, i, color))
 
-	#def updateColors(self):
-	#	reseed()
-	#	for tile in self.playgrid:
-	#		self.color = 
+	#draws rectangles on a canvas based on the tile information
+	def update(self, newSeed, canvas):
+		random.seed(newSeed)
+		for tile in self.playgrid:
+			tile.color = random.choice(colors)
+			canvas.create_rectangle(tile.centerX - self.tileSize / 2,
+							   tile.centerY - self.tileSize / 2,
+							   tile.centerX + self.tileSize / 2, 
+							   tile.centerY + self.tileSize / 2,
+							   fill=tile.color)
+			canvas.create_text(tile.centerX, tile.centerY, text=tile.tileNum)
+			canvas.pack()
 
-
-def reseed(newSeed):
-	random.seed(newSeed)
+#####################
+##### CONSTANTS #####
+#####################
 
 colors = ["white", "black", "red", "green", "blue", "cyan", "yellow", "magenta"]
-gridSize = 100
-tileSize = 8
+gridSize = 5
+tileSize = 50
+
+#####################
+####### MAIN ########
+#####################
 
 root = Tk()
 
-app = App(root)
+frame = Frame(root)
+frame.pack()
 
+canvas = Canvas(root, width=gridSize * tileSize, height=gridSize * tileSize)
+canvas.pack()
 
+seedEntry = Entry(root)
+seedEntry.pack(side=RIGHT)
+
+#set default seed
+seedEntry.insert(0, random.randint(100000, 999999))
+seedEntry.focus_set()
+
+def buttonUpdate():
+	grid.update(seedEntry.get(), canvas)
+
+gridUpdateButton = Button(root, text="Update Grid", command=buttonUpdate)
+gridUpdateButton.pack(side=RIGHT)
+
+grid = Grid(gridSize, tileSize)
+grid.update(seedEntry.get(), canvas)
 
 root.mainloop()
