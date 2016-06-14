@@ -13,7 +13,7 @@ class Tile:
 		self.tileNum = tileNum
 		self.color = color
 
-#a gridSize x gridSize grid of Tiles
+#a gridSize x gridSize array of Tiles
 class Grid:
 	def __init__(self, gridSize, tileSize):
 		self.gridSize = gridSize
@@ -26,14 +26,16 @@ class Grid:
 			centerX = (i * tileSize + (tileSize / 2)) % (gridSize * tileSize)
 			#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
 			centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
-			color = random.choice(colors)
+			color = "#00" + "%02x" % ((i % gridSize) * 16) + "%02x" % ((i / gridSize) * 16)
+			#color = random.choice(colors)
 			self.playgrid.append(Tile(tileSize, centerX, centerY, i, color))
 
 	#draws rectangles on a canvas based on the tile information
 	def update(self, newSeed, canvas):
 		random.seed(newSeed)
 		for tile in self.playgrid:
-			tile.color = random.choice(colors)
+			#tile.color = random.choice(colors)
+			#tile.color = "#%02x%02x%02x" % colorTuple
 			canvas.create_rectangle(tile.centerX - self.tileSize / 2,
 							   tile.centerY - self.tileSize / 2,
 							   tile.centerX + self.tileSize / 2, 
@@ -47,8 +49,8 @@ class Grid:
 #####################
 
 colors = ["white", "black", "red", "green", "blue", "cyan", "yellow", "magenta"]
-gridSize = 5
-tileSize = 50
+gridSize = 16
+tileSize = 32
 
 #####################
 ####### MAIN ########
@@ -62,18 +64,18 @@ frame.pack()
 canvas = Canvas(root, width=gridSize * tileSize, height=gridSize * tileSize)
 canvas.pack()
 
+def buttonUpdate():
+	grid.update(seedEntry.get(), canvas)
+
+gridUpdateButton = Button(root, text="Update Grid", command=buttonUpdate)
+gridUpdateButton.pack(side=RIGHT)
+
 seedEntry = Entry(root)
 seedEntry.pack(side=RIGHT)
 
 #set default seed
 seedEntry.insert(0, random.randint(100000, 999999))
 seedEntry.focus_set()
-
-def buttonUpdate():
-	grid.update(seedEntry.get(), canvas)
-
-gridUpdateButton = Button(root, text="Update Grid", command=buttonUpdate)
-gridUpdateButton.pack(side=RIGHT)
 
 grid = Grid(gridSize, tileSize)
 grid.update(seedEntry.get(), canvas)
