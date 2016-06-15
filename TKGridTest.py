@@ -19,7 +19,6 @@ class Tile:
 		else:
 			self.passable = True
 
-
 #a gridSize x gridSize array of Tiles
 class Grid:
 	def __init__(self):
@@ -31,6 +30,7 @@ class Grid:
 			centerX = (i * tileSize + (tileSize / 2)) % (maxSize)
 			#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
 			centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
+			#RGB more green as it goes to the right, more blue as it goes down
 			color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
 			#color = random.choice(colors)
 			self.playGrid.append(Tile(tileSize, centerX, centerY, i, color))
@@ -55,22 +55,23 @@ class Grid:
 		clickedTile = gridY * gridSize + gridX
 		return self.playGrid[clickedTile]
 
-class Player:
-	def __init__(self):		
+class POI:
+	def __init__(self, tag, color):		
 		self.xpos = tileSize / 2
 		self.ypos = tileSize / 2
-		color = "yellow"
-		symbol = '@'
+		self.tag = tag
+		self.color = color
+		self.symbol = '@'
 
 	def draw(self):
-		canvas.delete("player")
+		canvas.delete(self.tag)
 		canvas.create_oval(self.xpos - tileSize / 2,
 				 self.ypos - tileSize / 2,
 				 self.xpos + tileSize / 2,
 				 self.ypos + tileSize / 2,
 				 fill="yellow",
-				 tag="player")
-		canvas.create_text(self.xpos, self.ypos, text="@", tag="player")
+				 tag=self.tag)
+		canvas.create_text(self.xpos, self.ypos, text=self.symbol, tag=self.tag)
 
 	def move(self, inputChar):
 		if inputChar == 'a' and player.xpos - moveSpeed > 0 and grid.findTile(player.xpos - moveSpeed, player.ypos).passable == True:
@@ -99,6 +100,7 @@ moveSpeed = tileSize
 #####################
 
 root = Tk()
+root.wm_title("Pathfinder")
 
 def key(event):
 	player.move(event.char)
@@ -134,9 +136,8 @@ seedEntry.insert(0, random.randint(100000, 999999))
 grid = Grid()
 grid.update(canvas) #seedEntry.get() if going back to random colors
 
-player = Player()
+player = POI(tag="player", color="yellow")
 player.draw()
-
 
 #main loop
 root.mainloop()
