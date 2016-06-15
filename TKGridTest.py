@@ -7,7 +7,6 @@ import random
 class Tile:
 	def __init__(self, size, centerX, centerY, tileNum, color):
 		self.size = size
-		#pixel positions
 		self.centerX = centerX
 		self.centerY = centerY
 		self.tileNum = tileNum
@@ -15,9 +14,7 @@ class Tile:
 
 #a gridSize x gridSize array of Tiles
 class Grid:
-	def __init__(self, gridSize, tileSize):
-		self.gridSize = gridSize
-		self.tileSize = tileSize
+	def __init__(self):
 		self.playgrid = []
 
 		#create tiles
@@ -36,13 +33,21 @@ class Grid:
 		for tile in self.playgrid:
 			#tile.color = random.choice(colors)
 			#tile.color = "#%02x%02x%02x" % colorTuple
-			canvas.create_rectangle(tile.centerX - self.tileSize / 2,
-							   tile.centerY - self.tileSize / 2,
-							   tile.centerX + self.tileSize / 2, 
-							   tile.centerY + self.tileSize / 2,
+			canvas.create_rectangle(tile.centerX - tileSize / 2,
+							   tile.centerY - tileSize / 2,
+							   tile.centerX + tileSize / 2, 
+							   tile.centerY + tileSize / 2,
 							   fill=tile.color)
 			canvas.create_text(tile.centerX, tile.centerY, text=tile.tileNum)
 			canvas.pack()
+
+	#returns number of clicked tile, based off x & y coords
+	def findTile(self, xpos, ypos):
+		gridX = xpos / tileSize
+		gridY = ypos / tileSize
+		clickedTile = gridY * gridSize + gridX
+		return clickedTile
+
 
 #####################
 ##### CONSTANTS #####
@@ -61,7 +66,11 @@ root = Tk()
 frame = Frame(root)
 frame.pack()
 
+def dispTileInfo(event):
+	print grid.findTile(event.x, event.y)
+
 canvas = Canvas(root, width=gridSize * tileSize, height=gridSize * tileSize)
+canvas.bind("<Button-1>", dispTileInfo)
 canvas.pack()
 
 def buttonUpdate():
@@ -77,7 +86,7 @@ seedEntry.pack(side=RIGHT)
 seedEntry.insert(0, random.randint(100000, 999999))
 seedEntry.focus_set()
 
-grid = Grid(gridSize, tileSize)
+grid = Grid()
 grid.update(seedEntry.get(), canvas)
 
 root.mainloop()
