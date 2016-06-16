@@ -2,6 +2,10 @@ from Tkinter import *
 import time
 import random
 
+#####################
+##### CLASSES #######
+#####################
+
 #square tile
 #size is the w or h
 class Tile:
@@ -10,14 +14,25 @@ class Tile:
 		self.centerX = centerX
 		self.centerY = centerY
 		self.tileNum = tileNum
-		self.color = color
+		self.groundColor = color
 
 		chance = 3
 		if random.randint(0, chance) == chance:
 			self.passable = False
-			self.color = "black"
+			self.dispColor = "black"
 		else:
 			self.passable = True
+			self.dispColor = self.groundColor
+
+	def togglePassable(self):
+		self.passable = not self.passable
+		if self.dispColor == "black":
+			self.dispColor = self.groundColor
+		else:
+			self.dispColor = "black"
+
+		grid.update()
+		drawEntities()
 
 #a gridSize x gridSize array of Tiles
 class Grid:
@@ -30,13 +45,13 @@ class Grid:
 			centerX = (i * tileSize + (tileSize / 2)) % (maxSize)
 			#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
 			centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
-			#RGB more green as it goes to the right, more blue as it goes down
+			#RRGGBB more green as it goes to the right, more blue as it goes down
 			color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
 			#color = random.choice(colors)
 			self.playGrid.append(Tile(tileSize, centerX, centerY, i, color))
 
 	#draws rectangles on a canvas based on the tile information
-	def update(self, canvas): #add newseed if going back to random colors
+	def update(self): #add newseed if going back to random colors
 		#random.seed(newSeed)
 		for tile in self.playGrid:
 			#tile.color = random.choice(colors)
@@ -44,56 +59,53 @@ class Grid:
 							   tile.centerY - tileSize / 2,
 							   tile.centerX + tileSize / 2, 
 							   tile.centerY + tileSize / 2,
-							   fill=tile.color)
+							   fill=tile.dispColor)
 			#canvas.create_text(tile.centerX, tile.centerY, text=tile.tileNum)
 			canvas.pack()
+
 
 	#returns number of clicked tile, based off x & y coords
 	def findTile(self, xpos, ypos):
 		gridX = xpos / tileSize
 		gridY = ypos / tileSize
-		clickedTile = gridY * gridSize + gridX
-		return self.playGrid[clickedTile]
+		tileNum = gridY * gridSize + gridX
+		return self.playGrid[tileNum]
 
 class POI:
-	def __init__(self, tag, color):		
-		self.xpos = tileSize / 2
-		self.ypos = tileSize / 2
+	def __init__(self, xpos, ypos, tag, color, symbol, loc):		
+		self.gridX = xpos
+		self.gridY = ypos
 		self.tag = tag
 		self.color = color
-		self.symbol = '@'
+		self.symbol = symbol
+		self.loc = loc
 
 	def draw(self):
 		canvas.delete(self.tag)
-		canvas.create_oval(self.xpos - tileSize / 2,
-				 self.ypos - tileSize / 2,
-				 self.xpos + tileSize / 2,
-				 self.ypos + tileSize / 2,
-				 fill="yellow",
+		canvas.create_oval(grid.playGrid[self.loc].centerX - tileSize / 2,
+				 grid.playGrid[self.loc].centerY - tileSize / 2,
+				 grid.playGrid[self.loc].centerX + tileSize / 2,
+				 grid.playGrid[self.loc].centerY + tileSize / 2,
+				 fill=self.color,
 				 tag=self.tag)
-		canvas.create_text(self.xpos, self.ypos, text=self.symbol, tag=self.tag)
+		canvas.create_text(grid.playGrid[self.loc].centerX, grid.playGrid[self.loc].centerY, text=self.symbol, tag=self.tag)
 
-	def move(self, inputChar):
-		if inputChar == 'a' and player.xpos - moveSpeed > 0 and grid.findTile(player.xpos - moveSpeed, player.ypos).passable == True:
-			player.xpos -= moveSpeed
-		if inputChar == 'w' and player.ypos - moveSpeed > 0 and grid.findTile(player.xpos, player.ypos - moveSpeed).passable == True:
-			player.ypos -= moveSpeed
-		if inputChar == 'd' and player.xpos + moveSpeed < maxSize and grid.findTile(player.xpos + moveSpeed, player.ypos).passable == True:
-			player.xpos += moveSpeed
-		if inputChar == 's' and player.ypos + moveSpeed < maxSize and grid.findTile(player.xpos, player.ypos + moveSpeed).passable == True:
-			player.ypos += moveSpeed
+#####################
+##### FUNCTIONS #####
+#####################
 
-		player.draw()
+def drawEntities():
+	for entity in entities:
+		entity.draw()
 
 #####################
 ##### CONSTANTS #####
 #####################
 
 colors = ["white", "red", "green", "blue", "cyan", "yellow", "magenta"]
-gridSize = 32
-tileSize = 16
+gridSize = 16
+tileSize = 32
 maxSize = gridSize * tileSize
-moveSpeed = tileSize
 
 #####################
 ####### MAIN ########
@@ -102,42 +114,48 @@ moveSpeed = tileSize
 root = Tk()
 root.wm_title("Pathfinder")
 
-def key(event):
-	player.move(event.char)
-
 frame = Frame(root)
-frame.bind("<Key>", key)
 frame.pack()
 frame.focus_set()
 
 def dispTileInfo(event):
+	global prevClickedEntity
 	frame.focus_set()
-	tileNum = grid.findTile(event.x, event.y)
-	print grid.playGrid[tileNum].color
+	clickedTile = grid.findTile(event.x, event.y)
+	clickedEntity = None
+	#find if there's an entity on the clicked tile
+	for entity in entities:
+		if entity.loc == clickedTile.tileNum:
+			clickedEntity = entity
+
+	#if you're selecting an entity
+	if clickedEntity is not None and prevClickedEntity is None:
+		prevClickedEntity = clickedEntity
+		canvas.delete(clickedEntity.tag)
+	#if you've selected an entity and are clicking an empty tile
+	elif clickedEntity is None and prevClickedEntity is not None:
+		prevClickedEntity.loc = clickedTile.tileNum
+		drawEntities()
+		prevClickedEntity = None
+	#otherwise toggle passable
+	else:
+		clickedTile.togglePassable()
+prevClickedEntity = None
 
 canvas = Canvas(root, width=maxSize, height=maxSize)
 canvas.bind("<Button-1>", dispTileInfo)
 canvas.pack()
 
-'''
-def buttonUpdate():
-	grid.update(seedEntry.get(), canvas)
-
-gridUpdateButton = Button(root, text="Update Grid", command=buttonUpdate)
-gridUpdateButton.pack(side=RIGHT)
-
-seedEntry = Entry(root)
-seedEntry.pack(side=RIGHT)
-
-#set default seed
-seedEntry.insert(0, random.randint(100000, 999999))
-'''
-
 grid = Grid()
-grid.update(canvas) #seedEntry.get() if going back to random colors
+grid.update() #seedEntry.get() if going back to random colors
+entities = []
 
-player = POI(tag="player", color="yellow")
-player.draw()
+player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@", loc=0)
+entities.append(player)
 
+exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E", loc=gridSize * gridSize - 1)
+entities.append(exit)
+
+drawEntities()
 #main loop
 root.mainloop()
