@@ -10,11 +10,12 @@ from collections import deque
 #square tile
 #size is the w or h
 class Tile:
-	def __init__(self, size, centerX, centerY, tileNum, color):
+	def __init__(self, size, centerX, centerY, row, col, color):
 		self.size = size
 		self.centerX = centerX
 		self.centerY = centerY
-		self.tileNum = tileNum
+		self.row = row
+		self.col = col
 		self.groundColor = color
 
 		chance = 3
@@ -38,60 +39,62 @@ class Tile:
 #a gridSize x gridSize array of Tiles
 class Grid:
 	def __init__(self):
-		self.playGrid = []
-		self.testGrid = [[0 for i in range(gridSize)] for j in range(gridSize)]
-		self.testGrid[1][5] = "hello"
-		print self.testGrid
+		self.playGrid = [[0 for i in range(gridSize)] for j in range(gridSize)]
+
 		#create tiles
-		for i in range(lastTile):
-			#i * tileSize gets you to the left side, adding half of tilesize gets you to the center, modulus keeps it in rows
-			centerX = (i * tileSize + (tileSize / 2)) % (lastPixel)
-			#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
-			centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
-			#RRGGBB more green as it goes to the right, more blue as it goes down
-			#color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
-			color = "#909090"
-			#color = random.choice(colors)
-			self.playGrid.append(Tile(tileSize, centerX, centerY, i, color))
+		for row in range(gridSize):
+			for col in range(gridSize):
+				#i * tileSize gets you to the left side, adding half of tilesize gets you to the center, modulus keeps it in rows
+				#centerX = (i * tileSize + (tileSize / 2)) % (lastPixel)
+				centerX = row * tileSize + (tileSize / 2)
+				#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
+				#centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
+				centerY = col * tileSize + (tileSize / 2)
+				#RRGGBB more green as it goes to the right, more blue as it goes down
+				#color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
+				color = "#909090"
+				#color = random.choice(colors)
+				self.playGrid[row][col] = Tile(tileSize, centerX, centerY, row, col, color)
 
 	#draws rectangles on a canvas based on the tile information
 	def update(self): #add newseed if going back to random colors
 		#random.seed(newSeed)
-		for tile in self.playGrid:
-			#tile.color = random.choice(colors)
-			canvas.create_rectangle(tile.centerX - tileSize / 2,
-							   tile.centerY - tileSize / 2,
-							   tile.centerX + tileSize / 2, 
-							   tile.centerY + tileSize / 2,
-							   fill=tile.dispColor)
-			#canvas.create_text(tile.centerX, tile.centerY, text=tile.tileNum)
-			canvas.pack()
+		for row in self.playGrid:
+			for tile in row:
+				#tile.color = random.choice(colors)
+				canvas.create_rectangle(tile.centerX - tileSize / 2,
+								   tile.centerY - tileSize / 2,
+								   tile.centerX + tileSize / 2, 
+								   tile.centerY + tileSize / 2,
+								   fill=tile.dispColor)
+				#canvas.create_text(tile.centerX, tile.centerY, text=tile.loc)
+				canvas.pack()
 
 	#returns number of clicked tile, based off x & y coords
 	def findTile(self, xpos, ypos):
-		gridX = xpos / tileSize
-		gridY = ypos / tileSize
-		tileNum = gridY * gridSize + gridX
-		return self.playGrid[tileNum]
+		row = xpos / tileSize
+		col = ypos / tileSize
+		return self.playGrid[row][col]
 
 class POI:
-	def __init__(self, xpos, ypos, tag, color, symbol, loc):		
+	def __init__(self, xpos, ypos, tag, color, symbol, row, col):		
 		#self.gridX = xpos
 		#self.gridY = ypos
 		self.tag = tag
 		self.color = color
 		self.symbol = symbol
-		self.loc = loc
+		self.row = row
+		self.col = col
 
 	def draw(self):
 		canvas.delete(self.tag)
-		canvas.create_oval(grid.playGrid[self.loc].centerX - tileSize / 2,
-				 grid.playGrid[self.loc].centerY - tileSize / 2,
-				 grid.playGrid[self.loc].centerX + tileSize / 2,
-				 grid.playGrid[self.loc].centerY + tileSize / 2,
+		canvas.create_oval(grid.playGrid[self.row][self.col].centerX - tileSize / 2,
+				 grid.playGrid[self.row][self.col].centerY - tileSize / 2,
+				 grid.playGrid[self.row][self.col].centerX + tileSize / 2,
+				 grid.playGrid[self.row][self.col].centerY + tileSize / 2,
 				 fill=self.color,
 				 tag=self.tag)
-		canvas.create_text(grid.playGrid[self.loc].centerX, grid.playGrid[self.loc].centerY, text=self.symbol, tag=self.tag)
+		canvas.create_text(grid.playGrid[self.row][self.col].centerX, grid.playGrid[self.row][self.col].centerY, text=self.symbol, tag=self.tag)
 
 class Pathfinder:
 	def __init__(self):
@@ -136,17 +139,19 @@ def dispTileInfo(event):
 	clickedEntity = None
 	#find if there's an entity on the clicked tile
 	for entity in entities:
-		if entity.loc == clickedTile.tileNum:
+		if entity.row == clickedTile.row and entity.col == clickedTile.col:
 			clickedEntity = entity
 
 	#if you're selecting an entity
 	if clickedEntity is not None and prevClickedEntity is None:
-		clickedEntity.loc = None
+		clickedEntity.row = None
+		clickedEntity.col = None
 		prevClickedEntity = clickedEntity
 		canvas.delete(clickedEntity.tag)
 	#if you've selected an entity and are clicking an empty tile
 	elif clickedEntity is None and prevClickedEntity is not None:
-		prevClickedEntity.loc = clickedTile.tileNum
+		prevClickedEntity.row = clickedTile.row
+		prevClickedEntity.col = clickedTile.col
 		drawEntities()
 		prevClickedEntity = None
 	#otherwise toggle passable
@@ -167,10 +172,10 @@ grid = Grid()
 grid.update() #seedEntry.get() if going back to random colors
 entities = []
 
-player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@", loc=0)
+player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@", row=0, col=0)
 entities.append(player)
 
-exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E", loc=lastTile - 1)
+exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E", row=gridSize-1, col=gridSize-1)
 entities.append(exit)
 
 drawEntities()
