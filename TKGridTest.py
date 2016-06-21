@@ -10,39 +10,54 @@ from collections import deque
 #square tile
 #size is the w or h
 class Tile:
-	def __init__(self, size, centerX, centerY, row, col, color):
+	def __init__(self, size, centerX, centerY, row, col):
 		self.size = size
 		self.centerX = centerX
 		self.centerY = centerY
 		self.row = row
 		self.col = col
-		self.groundColor = color
+		self.visited = False
+		self.frontier = False
 
+		#randomly make some tiles impassable
 		chance = 3
 		if random.randint(0, chance) == chance:
 			self.passable = False
-			self.dispColor = "black"
 		else:
 			self.passable = True
-			self.dispColor = self.groundColor
+
+	def draw(self):
+		if self.passable == False:
+			color = "black"
+		elif self.frontier == True:
+			color = "#404090"
+		elif self.visited == True:
+			color = "#409040"
+		else:
+			color = "#808080"
+
+		if self.row == 3 and self.col == 8:
+			color = "#FF0000"
+
+		canvas.create_rectangle(self.centerX - tileSize / 2,
+						   self.centerY - tileSize / 2,
+						   self.centerX + tileSize / 2, 
+						   self.centerY + tileSize / 2,
+						   fill=color)
 
 	def togglePassable(self):
 		self.passable = not self.passable
-		if self.dispColor == "black":
-			self.dispColor = self.groundColor
-		else:
-			self.dispColor = "black"
-
-		grid.update()
-		drawEntities()
+		drawAll()
 
 #a gridSize x gridSize array of Tiles
 class Grid:
 	def __init__(self):
-		self.playGrid = [[0 for i in range(gridSize)] for j in range(gridSize)]
+		#self.playGrid = [[0 for i in range(gridSize)] for j in range(gridSize)]
+		self.playGrid = []
 
 		#create tiles
 		for row in range(gridSize):
+			self.playGrid.append([])
 			for col in range(gridSize):
 				#i * tileSize gets you to the left side, adding half of tilesize gets you to the center, modulus keeps it in rows
 				#centerX = (i * tileSize + (tileSize / 2)) % (lastPixel)
@@ -52,21 +67,18 @@ class Grid:
 				centerY = col * tileSize + (tileSize / 2)
 				#RRGGBB more green as it goes to the right, more blue as it goes down
 				#color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
-				color = "#909090"
 				#color = random.choice(colors)
-				self.playGrid[row][col] = Tile(tileSize, centerX, centerY, row, col, color)
+				#self.playGrid[row][col] = Tile(tileSize, centerX, centerY, row, col)
+				self.playGrid[row].append(Tile(tileSize, centerX, centerY, row, col))
 
 	#draws rectangles on a canvas based on the tile information
-	def update(self): #add newseed if going back to random colors
+	def drawTiles(self): #add newseed if going back to random colors
 		#random.seed(newSeed)
+		canvas.delete(ALL)
 		for row in self.playGrid:
 			for tile in row:
 				#tile.color = random.choice(colors)
-				canvas.create_rectangle(tile.centerX - tileSize / 2,
-								   tile.centerY - tileSize / 2,
-								   tile.centerX + tileSize / 2, 
-								   tile.centerY + tileSize / 2,
-								   fill=tile.dispColor)
+				tile.draw()
 				#canvas.create_text(tile.centerX, tile.centerY, text=tile.loc)
 				canvas.pack()
 
@@ -76,17 +88,22 @@ class Grid:
 		col = ypos / tileSize
 		return self.playGrid[row][col]
 
+
 class POI:
-	def __init__(self, xpos, ypos, tag, color, symbol, row, col):		
+	def __init__(self, xpos, ypos, tag, color, symbol):		
 		#self.gridX = xpos
 		#self.gridY = ypos
 		self.tag = tag
 		self.color = color
 		self.symbol = symbol
+
+	def placeAt(self, row, col):
 		self.row = row
 		self.col = col
 
 	def draw(self):
+		if self.row == None or self.col == None:
+			return
 		canvas.delete(self.tag)
 		canvas.create_oval(grid.playGrid[self.row][self.col].centerX - tileSize / 2,
 				 grid.playGrid[self.row][self.col].centerY - tileSize / 2,
@@ -98,7 +115,44 @@ class POI:
 
 class Pathfinder:
 	def __init__(self):
-		frontier = deque()
+		self.frontier = deque()
+		self.reset()
+
+	def expandFrontier(self):
+		workingTile = self.frontier.popleft()
+		workingTile.visited = True
+		workingTile.frontier = False
+		print "\n\nworkingTile", workingTile.row, workingTile.col
+
+		possibleFrontier = ((workingTile.row+1, workingTile.col),
+							(workingTile.row-1, workingTile.col),
+							(workingTile.row, workingTile.col+1),
+							(workingTile.row, workingTile.col-1))
+
+		for loc in possibleFrontier:
+			drawAll()
+			tile = grid.playGrid[loc[0]][loc[1]]
+			if tile.visited == False and tile not in self.frontier and inRange(loc[0], loc[1]) and tile.passable == True:
+				self.frontier.append(tile)
+				print "appended tile at", tile.row, tile.col
+				tile.frontier = True
+
+		for tile in self.frontier:
+			print tile.row, tile.col
+
+	def clear(self):
+		self.frontier.clear()
+
+		for row in grid.playGrid:
+			for tile in row:
+				tile.visited = False
+				tile.frontier = False
+
+		drawAll()
+
+	def reset(self):
+		self.frontier.append(grid.playGrid[player.row][player.col])
+
 	#frontier.append()
 	#frontier.popleft()
 
@@ -110,12 +164,24 @@ def drawEntities():
 	for entity in entities:
 		entity.draw()
 
+def drawAll():
+	grid.drawTiles()
+	drawEntities()
+
+def inRange(row, col):
+	if row >= 0 and row < gridSize and col >= 0 and col < gridSize:
+		return True
+	else:
+		return False
+
 #####################
 ##### CONSTANTS #####
 #####################
 
 colors = ["white", "red", "green", "blue", "cyan", "yellow", "magenta"]
 gridSize = 16
+numRows = 10
+numCols = 5
 lastTile = gridSize * gridSize
 tileSize = 32
 lastPixel = gridSize * tileSize
@@ -136,6 +202,7 @@ def dispTileInfo(event):
 	global prevClickedEntity
 	frame.focus_set()
 	clickedTile = grid.findTile(event.x, event.y)
+	print "clicked", clickedTile.row, clickedTile.col
 	clickedEntity = None
 	#find if there's an entity on the clicked tile
 	for entity in entities:
@@ -148,11 +215,14 @@ def dispTileInfo(event):
 		clickedEntity.col = None
 		prevClickedEntity = clickedEntity
 		canvas.delete(clickedEntity.tag)
+		pathfinder.clear()
 	#if you've selected an entity and are clicking an empty tile
 	elif clickedEntity is None and prevClickedEntity is not None:
 		prevClickedEntity.row = clickedTile.row
 		prevClickedEntity.col = clickedTile.col
 		drawEntities()
+		if prevClickedEntity == player:
+			pathfinder.reset()
 		prevClickedEntity = None
 	#otherwise toggle passable
 	else:
@@ -163,21 +233,25 @@ canvas.bind("<Button-1>", dispTileInfo)
 canvas.pack()
 
 def findPathButton():
-	print "gettin there"
+	pathfinder.expandFrontier()
 
 stepButton = Button(root, text=">", command=findPathButton)
 stepButton.pack()
 
 grid = Grid()
-grid.update() #seedEntry.get() if going back to random colors
+grid.drawTiles() #seedEntry.get() if going back to random colors
 entities = []
 
-player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@", row=0, col=0)
+player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@")
+player.placeAt(0, 0)
 entities.append(player)
 
-exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E", row=gridSize-1, col=gridSize-1)
+exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E")
+exit.placeAt(gridSize-1, gridSize-1)
 entities.append(exit)
 
+
+pathfinder = Pathfinder()
 drawEntities()
 #main loop
 root.mainloop()
