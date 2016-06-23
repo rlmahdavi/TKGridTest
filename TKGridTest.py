@@ -36,15 +36,11 @@ class Tile:
 		else:
 			color = "#808080"
 
-		if self.row == 3 and self.col == 8:
-			color = "#FF0000"
-
 		canvas.create_rectangle(self.centerX - tileSize / 2,
 						   self.centerY - tileSize / 2,
 						   self.centerX + tileSize / 2, 
 						   self.centerY + tileSize / 2,
 						   fill=color)
-
 	def togglePassable(self):
 		self.passable = not self.passable
 		drawAll()
@@ -56,15 +52,15 @@ class Grid:
 		self.playGrid = []
 
 		#create tiles
-		for row in range(gridSize):
+		for row in range(numRows):
 			self.playGrid.append([])
-			for col in range(gridSize):
+			for col in range(numCols):
 				#i * tileSize gets you to the left side, adding half of tilesize gets you to the center, modulus keeps it in rows
 				#centerX = (i * tileSize + (tileSize / 2)) % (lastPixel)
-				centerX = row * tileSize + (tileSize / 2)
+				centerX = col * tileSize + (tileSize / 2)
 				#i / grisize gets you the row #, * tilsize gets you the bottom of the rectangle, - tilesize/2 gets you the center
 				#centerY = ((i / gridSize) + 1) * tileSize - (tileSize / 2)
-				centerY = col * tileSize + (tileSize / 2)
+				centerY = row * tileSize + (tileSize / 2)
 				#RRGGBB more green as it goes to the right, more blue as it goes down
 				#color = "#00" + "%02x" % ((i % gridSize) * (256 / gridSize)) + "%02x" % ((i / gridSize) * (256 / gridSize))
 				#color = random.choice(colors)
@@ -84,8 +80,8 @@ class Grid:
 
 	#returns number of clicked tile, based off x & y coords
 	def findTile(self, xpos, ypos):
-		row = xpos / tileSize
-		col = ypos / tileSize
+		row = ypos / tileSize
+		col = xpos / tileSize
 		return self.playGrid[row][col]
 
 
@@ -119,6 +115,8 @@ class Pathfinder:
 		self.reset()
 
 	def expandFrontier(self):
+		if len(self.frontier) == 0:
+			return
 		workingTile = self.frontier.popleft()
 		workingTile.visited = True
 		workingTile.frontier = False
@@ -169,7 +167,7 @@ def drawAll():
 	drawEntities()
 
 def inRange(row, col):
-	if row >= 0 and row < gridSize and col >= 0 and col < gridSize:
+	if row >= 0 and row < numRows and col >= 0 and col < numCols:
 		return True
 	else:
 		return False
@@ -180,11 +178,12 @@ def inRange(row, col):
 
 colors = ["white", "red", "green", "blue", "cyan", "yellow", "magenta"]
 gridSize = 16
-numRows = 10
-numCols = 5
-lastTile = gridSize * gridSize
+numRows = 8
+numCols = 16
+lastTile = numRows * numCols
 tileSize = 32
-lastPixel = gridSize * tileSize
+lastHPixel = numRows * tileSize
+lastVPixel = numCols * tileSize
 
 #####################
 ####### MAIN ########
@@ -228,7 +227,7 @@ def dispTileInfo(event):
 	else:
 		clickedTile.togglePassable()
 
-canvas = Canvas(root, width=lastPixel, height=lastPixel)
+canvas = Canvas(root, width=numCols * tileSize, height=numRows * tileSize)
 canvas.bind("<Button-1>", dispTileInfo)
 canvas.pack()
 
@@ -246,8 +245,8 @@ player = POI(xpos=3, ypos=2, tag="player", color="yellow", symbol="@")
 player.placeAt(0, 0)
 entities.append(player)
 
-exit = POI(xpos=gridSize, ypos=gridSize, tag="exit", color="red", symbol="E")
-exit.placeAt(gridSize-1, gridSize-1)
+exit = POI(xpos=1, ypos=2, tag="exit", color="red", symbol="E")
+exit.placeAt(numRows-1, numCols-1)
 entities.append(exit)
 
 
