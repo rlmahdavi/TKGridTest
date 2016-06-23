@@ -18,6 +18,7 @@ class Tile:
 		self.col = col
 		self.visited = False
 		self.frontier = False
+		self.cost = 0
 
 		#randomly make some tiles impassable
 		chance = 3
@@ -41,6 +42,7 @@ class Tile:
 						   self.centerX + tileSize / 2, 
 						   self.centerY + tileSize / 2,
 						   fill=color)
+		canvas.create_text(self.centerX, self.centerY, text=self.cost)
 
 	def togglePassable(self):
 		self.passable = not self.passable
@@ -76,7 +78,7 @@ class Grid:
 			for tile in row:
 				#tile.color = random.choice(colors)
 				tile.draw()
-				#canvas.create_text(tile.centerX, tile.centerY, text=tile.loc)
+				#canvas.create_text(tile.centerX, tile.centerY, text=tile.cost)
 				canvas.pack()
 
 	#returns number of clicked tile, based off x & y coords
@@ -125,20 +127,37 @@ class Pathfinder:
 		workingTile.frontier = False
 		workingTile.draw()
 
-		possibleFrontier = ((workingTile.row+1, workingTile.col),
-							(workingTile.row-1, workingTile.col),
-							(workingTile.row, workingTile.col+1),
-							(workingTile.row, workingTile.col-1))
+		possibleFrontier = adjacentTiles(workingTile)
 
 		for loc in possibleFrontier:
 			if inRange(loc[0], loc[1]):
 				tile = grid.playGrid[loc[0]][loc[1]]
-				if tile.visited == False and tile not in self.frontier and tile.passable == True:
+				if tile.visited == True:
+					tile.cost = min(tile.cost, workingTile.cost + 1)
+				elif tile not in self.frontier and tile.passable == True:
 					self.frontier.append(tile)
 					tile.frontier = True
+					tile.cost = workingTile.cost + 1
 					tile.draw()
 					drawEntities()
 
+	def highlightPath(self):
+		current = grid.playGrid[exit.row][exit.col]
+		i = 0
+		while current != (player.row, player.col):
+			i += 1
+			adjacents = adjacentTiles(current)
+			adjacents = [(adjacent, adjacent.cost) for adjacent in adjacents]
+			print adjacents
+
+			#adjacentsCosts = []
+			#for adjacent in adjacents:
+			#	adjacentsCosts.append(grid.playGrid[adjacent[0]][adjacent[1]].cost)
+
+
+
+			if i == 100:
+				return
 
 
 	def clear(self):
@@ -166,6 +185,12 @@ def drawEntities():
 def drawAll():
 	grid.drawTiles()
 	drawEntities()
+
+def adjacentTiles(tile):
+	return ((tile.row+1, tile.col),
+			(tile.row-1, tile.col),
+			(tile.row, tile.col+1),
+			(tile.row, tile.col-1))
 
 def inRange(row, col):
 	if row >= 0 and row < numRows and col >= 0 and col < numCols:
@@ -197,8 +222,7 @@ def clickTile(event):
 		prevClickedEntity.row = clickedTile.row
 		prevClickedEntity.col = clickedTile.col
 		drawEntities()
-		if prevClickedEntity == player:
-			pathfinder.reset()
+		pathfinder.reset()
 		prevClickedEntity = None
 	#otherwise toggle passable
 	else:
@@ -249,6 +273,9 @@ def findPathButton():
 
 stepButton = Button(optionsPanel, text=">", command=findPathButton)
 stepButton.pack(side=RIGHT)
+
+pathButton = Button(optionsPanel, text="path", command=pathfinder.highlightPath)
+pathButton.pack()
 
 grid = Grid()
 grid.drawTiles() #seedEntry.get() if going back to random colors
