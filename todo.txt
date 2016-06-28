@@ -1,2 +1,2 @@
 when a wall is added/removed, update frontier accordingly
-bugs out when moving exit
+use Tile.togglePassable()

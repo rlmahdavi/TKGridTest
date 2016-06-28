@@ -19,9 +19,10 @@ class Tile:
 		self.visited = False
 		self.frontier = False
 		self.cost = 0
+		self.partOfPath = False
 
 		#randomly make some tiles impassable
-		chance = 3
+		chance = 2
 		if random.randint(0, chance) == chance:
 			self.passable = False
 		else:
@@ -30,6 +31,8 @@ class Tile:
 	def draw(self):
 		if self.passable == False:
 			color = "black"
+		elif self.partOfPath == True:
+			color = "#904040"
 		elif self.frontier == True:
 			color = "#404090" #blue
 		elif self.visited == True:
@@ -99,6 +102,9 @@ class POI:
 	def placeAt(self, row, col):
 		self.row = row
 		self.col = col
+		grid.playGrid[row][col].passable = True
+		grid.playGrid[row][col].draw()
+		self.draw()
 
 	def draw(self):
 		if self.row == None or self.col == None:
@@ -116,8 +122,17 @@ class Pathfinder:
 	def __init__(self):
 		self.frontier = deque()
 		self.stepCount = 0
+		#start from the end
+		self.current = 0
+		self.pathLength = 0
 
-	def expandFrontier(self):
+	def fullFrontier(self):
+		self.clear()
+		self.reset()
+		while len(self.frontier) > 0:
+			self.stepFrontier()
+
+	def stepFrontier(self):
 		if len(self.frontier) == 0:
 			return
 		self.stepCount += 1
@@ -138,41 +153,76 @@ class Pathfinder:
 					self.frontier.append(tile)
 					tile.frontier = True
 					tile.cost = workingTile.cost + 1
-					tile.draw()
-					drawEntities()
+				tile.draw()
+				drawEntities()
 
-	def highlightPath(self):
-		current = grid.playGrid[exit.row][exit.col]
+	def fullPath(self):
+		#wh
 		i = 0
-		while current != (player.row, player.col):
-			i += 1
-			adjacents = adjacentTiles(current)
-			adjacents = [(adjacent, adjacent.cost) for adjacent in adjacents]
-			print adjacents
-
-			#adjacentsCosts = []
-			#for adjacent in adjacents:
-			#	adjacentsCosts.append(grid.playGrid[adjacent[0]][adjacent[1]].cost)
-
-
-
-			if i == 100:
+		while self.current != grid.playGrid[player.row][player.col] and i < 100:
+			if self.stepPath() == 1:
 				return
+			i += 1
 
+	def playPath(self):
+		i = 0
+		while self.current != grid.playGrid[player.row][player.col] and i < 100:
+			if self.stepPath() == 1:
+				return
+			i += 1
+
+	#move one tile closer to the player, based on the cost of tiles
+	def stepPath(self):
+		#initialize
+		if self.current == 0:
+			self.current = grid.playGrid[exit.row][exit.col]
+			self.current.partOfPath = True
+			self.current.draw()
+
+		if self.current.visited == False:
+			print "Error: no path found, try expanding frontier"
+			return 1
+
+		#find row, col of all adjacent tiles
+		adjacents = adjacentTiles(self.current)
+
+		#add all in range tiles to list of possibles
+		adjTiles = []
+		for adj in adjacents:
+			if inRange(adj[0], adj[1]):
+				adjTiles.append(grid.playGrid[adj[0]][adj[1]])
+
+		#see which possible has the lowest cost and is passable
+		for adj in adjTiles:
+			if adj.cost < self.current.cost and adj.passable:
+				self.current = adj
+				self.pathLength += 1 
+				pathLength.set("Path Length: " + str(self.pathLength))
+
+		self.current.partOfPath = True
+		self.current.draw()
+		drawEntities()
 
 	def clear(self):
 		self.frontier.clear()
+		self.stepCount = 0
+		self.pathLength = 0
+		self.current = 0
+
+		stpct.set("Step Count: 0")
+		pathLength.set("Path Length: 0")
 
 		for row in grid.playGrid:
 			for tile in row:
 				tile.visited = False
 				tile.frontier = False
+				tile.cost = 0
+				tile.partOfPath = False
 
 		drawAll()
 
 	def reset(self):
 		self.frontier.append(grid.playGrid[player.row][player.col])
-		self.stepCount = 0
 
 #####################
 ##### FUNCTIONS #####
@@ -234,11 +284,11 @@ def clickTile(event):
 #####################
 
 colors = ["white", "red", "green", "blue", "cyan", "yellow", "magenta"]
-gridSize = 16
-numRows = 8
-numCols = 16
+#gridSize = 16
+numRows = 32
+numCols = 32
 lastTile = numRows * numCols
-tileSize = 32
+tileSize = 16
 lastHPixel = numRows * tileSize
 lastVPixel = numCols * tileSize
 
@@ -265,17 +315,25 @@ optionsPanel.pack(side=RIGHT)
 
 stpct = StringVar()
 steps = Label(optionsPanel, width=14, textvariable=stpct)
-steps.pack(side=LEFT)
+steps.grid(row=0, column=0)
 stpct.set("Step Count: 0")
 
-def findPathButton():
-	pathfinder.expandFrontier()
+fullFrontierButton = Button(optionsPanel, text="frontier", command=pathfinder.fullFrontier)
+fullFrontierButton.grid(row=0, column=1)
 
-stepButton = Button(optionsPanel, text=">", command=findPathButton)
-stepButton.pack(side=RIGHT)
+stepFrontierButton = Button(optionsPanel, text="f>", command=pathfinder.stepFrontier)
+stepFrontierButton.grid(row=0, column=2)
 
-pathButton = Button(optionsPanel, text="path", command=pathfinder.highlightPath)
-pathButton.pack()
+pathLength = StringVar()
+pathLen = Label(optionsPanel, width=14, textvariable = pathLength)
+pathLen.grid(row=1, column=0)
+pathLength.set("Path Length: 0")
+
+fullPathButton = Button(optionsPanel, text="path", command=pathfinder.fullPath)
+fullPathButton.grid(row=1, column=1)
+
+stepPathButton = Button(optionsPanel, text="p>", command=pathfinder.stepPath)
+stepPathButton.grid(row=1, column=2)
 
 grid = Grid()
 grid.drawTiles() #seedEntry.get() if going back to random colors
